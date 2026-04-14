@@ -185,13 +185,15 @@
 
       /* CARD 754x472 */
       #sb-card {
-        position: relative;
+        position: absolute;
+        left: -99999px;
+        top: 0;
+
         width: 754px;
-        background: #0f172a;
         height: 472px;
+        background: #0f172a;
         border-radius: 16px;
         overflow: hidden;
-        flex-shrink: 0;
         font-family: "BitSans", sans-serif;
       }
       /* ── RESPONSIVE: skala kartu agar muat di layar kecil ── */
@@ -207,34 +209,24 @@
         justify-content: center;
         overflow: hidden;
       }
-      /* image preview hidden default */
       #preview-img {
-        display: none;
+        display: block;
         width: 100%;
         max-width: 754px;
         height: auto;
         border-radius: 16px;
+        margin: 0 auto;
       }
-
-      /* Desktop */
-      @media (min-width: 769px) {
-        #sb-card {
-          display: block;
-        }
-
-        #preview-img {
-          display: none !important;
-        }
-      }
-
-      /* Mobile */
+      /* Mobile: tampilkan image, sembunyikan card live */
       @media (max-width: 768px) {
-        #sb-card {
-          display: none;
-        }
-
         #preview-img {
           display: block;
+        }
+
+        #sb-card {
+          position: absolute;
+          left: -99999px; /* tetap bisa dirender */
+          top: 0;
         }
       }
       #sb-bg {
