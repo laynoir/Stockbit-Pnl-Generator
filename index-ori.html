@@ -196,25 +196,45 @@
       }
       /* ── RESPONSIVE: skala kartu agar muat di layar kecil ── */
       .preview-section {
-        overflow-x: hidden;
+        width: 100%;
+        display: none;
+        overflow: hidden;
       }
 
-      .card-scaler {
+      .card-wrap {
         width: 100%;
-        overflow: hidden;
         display: flex;
         justify-content: center;
+        overflow: hidden;
+      }
+      /* image preview hidden default */
+      #preview-img {
+        display: none;
+        width: 100%;
+        max-width: 754px;
+        height: auto;
+        border-radius: 16px;
       }
 
-      @media (max-width: 800px) {
-        .card-scaler {
-          transform-origin: top center;
-        }
+      /* Desktop */
+      @media (min-width: 769px) {
         #sb-card {
-          transform-origin: top left;
-          transform: scale(
-            calc(100vw / 754px)
-          ); /* tidak bisa pakai calc langsung */
+          display: block;
+        }
+
+        #preview-img {
+          display: none !important;
+        }
+      }
+
+      /* Mobile */
+      @media (max-width: 768px) {
+        #sb-card {
+          display: none;
+        }
+
+        #preview-img {
+          display: block;
         }
       }
       #sb-bg {
@@ -460,7 +480,11 @@
 
     <div class="preview-section" id="preview-section">
       <div class="prev-label">Preview</div>
-      <div class="card-scaler">
+
+      <div class="card-wrap">
+        <!-- Preview hasil render -->
+        <img id="preview-img" alt="preview" />
+
         <div id="sb-card">
           <img
             id="sb-bg"
@@ -535,33 +559,34 @@
       const SVG_LOSS =
         '<svg width="300" height="300" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.6665 4.66663L11.3332 11.3333" stroke="#D74342" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.3332 4.66663V11.3333H4.6665" stroke="#D74342" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-      function scaleCard() {
-        const card = document.getElementById("sb-card");
-        if (!card) return;
-        const container = card.parentElement;
-        const containerW = container.offsetWidth;
-        const cardW = 754;
-        if (containerW < cardW) {
-          const scale = containerW / cardW;
-          card.style.transformOrigin = "top left";
-          card.style.transform = `scale(${scale})`;
-          card.style.marginBottom = `-${cardW * (1 - scale) * (472 / 754)}px`;
-          container.style.height = `${472 * scale}px`;
-        } else {
-          card.style.transform = "";
-          card.style.marginBottom = "";
-          container.style.height = "";
+      let latestImageData = "";
+
+      async function renderPreview() {
+        try {
+          await document.fonts.ready;
+          await new Promise((r) => setTimeout(r, 50));
+
+          const canvas = await html2canvas(document.getElementById("sb-card"), {
+            scale: 2,
+            useCORS: false,
+            allowTaint: true,
+            backgroundColor: "#272727",
+            logging: false,
+          });
+
+          const finalCanvas = cropCanvas(canvas);
+
+          latestImageData = finalCanvas.toDataURL("image/png", 1.0);
+
+          const img = document.getElementById("preview-img");
+          if (img) {
+            img.src = latestImageData;
+            img.style.display = "block";
+          }
+        } catch (e) {
+          console.error("Preview gagal:", e);
         }
       }
-
-      window.addEventListener("resize", scaleCard);
-
-      // panggil setiap kali preview muncul
-      const _origGenerate = generate;
-      generate = function () {
-        _origGenerate();
-        setTimeout(scaleCard, 50);
-      };
 
       // INPUT TICKER (AUTO FORMAT)
       document
@@ -594,6 +619,8 @@
         const pct = ((now - avg) / avg) * 100;
         const isProfit = pct >= 0;
         const sign = isProfit ? "+" : "";
+
+        renderPreview();
 
         // SET TICKER
         const tickerEl = document.getElementById("c-ticker");
@@ -714,7 +741,6 @@
         return cropped;
       }
 
-      // SAVE IMAGE (FIXED VERSION)
       async function saveImage() {
         const btn = document.getElementById("btn-save");
         const orig = btn.innerHTML;
@@ -723,21 +749,9 @@
         btn.disabled = true;
 
         try {
-          await document.fonts.ready;
-
-          // kasih delay biar layout stabil
-          await new Promise((r) => setTimeout(r, 50));
-
-          const canvas = await html2canvas(document.getElementById("sb-card"), {
-            scale: 3,
-            useCORS: false,
-            allowTaint: true,
-            backgroundColor: "#272727",
-            logging: false,
-          });
-
-          // AUTO CROP (hilangin putih)
-          const finalCanvas = cropCanvas(canvas);
+          if (!latestImageData) {
+            await renderPreview();
+          }
 
           const ticker =
             document.getElementById("c-ticker").textContent || "saham";
@@ -749,7 +763,7 @@
 
           const a = document.createElement("a");
           a.download = `return-${ticker}-${pct}pct.png`;
-          a.href = finalCanvas.toDataURL("image/png", 1.0);
+          a.href = latestImageData;
           a.click();
 
           btn.innerHTML = "✓ Tersimpan!";
